@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PowerPlay — Cricket Scoreboard Management System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --pitch-dark:#0F2E1F;
+    --pitch:#173B27;
+    --turf:#2D6A4F;
+    --turf-light:#40916C;
+    --amber:#FFB100;
+    --amber-dark:#E09400;
+    --cream:#F5F3EC;
+    --card:#FFFFFF;
+    --ink:#10241C;
+    --ink-soft:#516B5C;
+    --line:#DCE3DA;
+    --radius:16px;
+    --radius-sm:10px;
+    --shadow:0 8px 24px rgba(15,46,31,0.10);
+    --font-display:'Rajdhani',sans-serif;
+    --font-body:'Work Sans',sans-serif;
+    --font-mono:'Orbitron',sans-serif;
+  }
+  body.dark{
+    --cream:#0A1912;
+    --card:#12291D;
+    --ink:#EAF3EC;
+    --ink-soft:#9FBCAC;
+    --line:#1F4130;
+    --shadow:0 8px 24px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:var(--font-body);
+    transition:background .3s ease, color .3s ease;
+    min-height:100vh;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+  }
+
+  /* ---------- NAVBAR ---------- */
+  .navbar{
+    position:sticky; top:0; z-index:100;
+    background:var(--pitch-dark);
+    border-bottom:3px solid var(--amber);
+  }
+  .nav-inner{
+    max-width:1200px; margin:0 auto; padding:14px 24px;
+    display:flex; align-items:center; justify-content:space-between; gap:20px;
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px;
+    color:#fff; text-decoration:none; cursor:pointer; background:none; border:none;
+  }
+  .brand-mark{
+    width:38px; height:38px; border-radius:50%;
+    background:conic-gradient(var(--amber) 0deg 270deg, var(--turf) 270deg 360deg);
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px;
+  }
+  .brand-text{font-family:var(--font-display); font-weight:700; font-size:1.35rem; letter-spacing:0.5px;}
+  .brand-text span{color:var(--amber);}
+  .nav-links{display:flex; gap:6px; flex:1; justify-content:center;}
+  .nav-link{
+    background:none; border:none; color:#CFE3D6; font-family:var(--font-display);
+    font-size:1.02rem; font-weight:600; letter-spacing:0.3px; padding:8px 16px;
+    border-radius:999px; cursor:pointer; transition:all .2s ease;
+  }
+  .nav-link:hover{color:#fff; background:rgba(255,255,255,0.08);}
+  .nav-link.active{color:var(--pitch-dark); background:var(--amber);}
+  .nav-right{display:flex; align-items:center; gap:8px;}
+  .icon-btn{
+    width:40px; height:40px; border-radius:50%; border:2px solid var(--turf-light);
+    background:transparent; color:#fff; font-size:1.1rem; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:all .2s ease;
+  }
+  .icon-btn:hover{background:var(--turf-light);}
+  .hamburger{display:none; background:none; border:none; color:#fff; font-size:1.6rem; cursor:pointer;}
+  @media (max-width:820px){
+    .nav-links{
+      display:none; position:absolute; top:100%; left:0; right:0; background:var(--pitch-dark);
+      flex-direction:column; padding:10px; border-bottom:3px solid var(--amber);
+    }
+    .nav-links.open{display:flex;}
+    .hamburger{display:block;}
+    .nav-link{text-align:left; width:100%;}
+  }
+
+  /* ---------- PAGES ---------- */
+  .page{display:none; animation:fadeIn .4s ease;}
+  .page.active{display:block;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative; overflow:hidden;
+    background:
+      radial-gradient(ellipse 60% 90% at 15% -10%, rgba(255,177,0,0.25), transparent 60%),
+      radial-gradient(ellipse 60% 90% at 85% -10%, rgba(255,177,0,0.25), transparent 60%),
+      linear-gradient(180deg, var(--pitch-dark) 0%, var(--pitch) 55%, var(--turf) 100%);
+    padding:70px 24px 90px;
+    color:#fff;
+  }
+  .hero::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 42px);
+    pointer-events:none;
+  }
+  .beam{
+    position:absolute; top:-10%; width:220px; height:160%;
+    background:linear-gradient(180deg, rgba(255,255,255,0.14), transparent 70%);
+    transform:rotate(18deg); filter:blur(4px);
+    animation:beamPulse 5s ease-in-out infinite;
+  }
+  .beam.b1{left:8%; animation-delay:0s;}
+  .beam.b2{left:38%; animation-delay:1.6s;}
+  .beam.b3{left:70%; animation-delay:3.2s;}
+  @keyframes beamPulse{0%,100%{opacity:0.25;} 50%{opacity:0.6;}}
+
+  .hero-inner{
+    max-width:1200px; margin:0 auto; position:relative; z-index:2;
+    display:grid; grid-template-columns:1.1fr 0.9fr; gap:48px; align-items:center;
+  }
+  @media (max-width:900px){.hero-inner{grid-template-columns:1fr;}}
+  .eyebrow{
+    display:inline-block; font-family:var(--font-display); font-weight:700; letter-spacing:2px;
+    color:var(--amber); font-size:0.85rem; text-transform:uppercase; margin-bottom:14px;
+  }
+  .hero h1{
+    font-family:var(--font-display); font-size:3.2rem; line-height:1.05; font-weight:700;
+    margin-bottom:18px;
+  }
+  .hero h1 em{color:var(--amber); font-style:normal;}
+  .hero p{font-size:1.08rem; color:#DCE9E0; max-width:520px; margin-bottom:28px; line-height:1.6;}
+  .btn{
+    font-family:var(--font-display); font-weight:700; font-size:1.05rem; letter-spacing:0.3px;
+    padding:14px 30px; border-radius:999px; border:none; cursor:pointer;
+    transition:transform .15s ease, box-shadow .15s ease; display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--amber); color:var(--pitch-dark); box-shadow:0 6px 18px rgba(255,177,0,0.35);}
+  .btn-primary:hover{background:var(--amber-dark); box-shadow:0 8px 22px rgba(255,177,0,0.45);}
+  .btn-outline{background:transparent; color:#fff; border:2px solid rgba(255,255,255,0.5);}
+  .btn-outline:hover{border-color:#fff; background:rgba(255,255,255,0.08);}
+  .hero-ctas{display:flex; gap:14px; flex-wrap:wrap;}
+
+  /* LED scoreboard signature */
+  .led-panel{
+    background:#08170F; border:3px solid #1E4530; border-radius:var(--radius);
+    padding:22px; box-shadow:0 20px 50px rgba(0,0,0,0.45), inset 0 0 30px rgba(0,0,0,0.6);
+  }
+  .led-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+  .led-title{font-family:var(--font-display); color:#7FBF9A; font-size:0.8rem; letter-spacing:2px; text-transform:uppercase;}
+  .led-dot{width:8px; height:8px; border-radius:50%; background:var(--amber); box-shadow:0 0 8px var(--amber); animation:blink 1.4s infinite;}
+  @keyframes blink{0%,60%{opacity:1;}80%,100%{opacity:0.25;}}
+  .led-score{
+    font-family:var(--font-mono); font-weight:800; color:var(--amber);
+    font-size:3.4rem; letter-spacing:2px; text-shadow:0 0 14px rgba(255,177,0,0.55);
+    line-height:1;
+  }
+  .led-sub{font-family:var(--font-mono); color:#7FBF9A; font-size:1.1rem; margin-top:6px;}
+  .led-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:20px;}
+  .led-chip{background:#0F2418; border:1px solid #1E4530; border-radius:8px; padding:10px; text-align:center;}
+  .led-chip b{display:block; font-family:var(--font-mono); color:#fff; font-size:1.2rem;}
+  .led-chip span{font-size:0.7rem; color:#7FBF9A; letter-spacing:1px; text-transform:uppercase;}
+
+  section.intro{
+    max-width:1200px; margin:0 auto; padding:64px 24px; display:grid;
+    grid-template-columns:repeat(3,1fr); gap:24px;
+  }
+  @media (max-width:900px){section.intro{grid-template-columns:1fr;}}
+  .feature-card{
+    background:var(--card); border-radius:var(--radius); padding:26px; box-shadow:var(--shadow);
+    border:1px solid var(--line); transition:transform .2s ease;
+  }
+  .feature-card:hover{transform:translateY(-4px);}
+  .feature-card .ic{font-size:1.6rem; margin-bottom:10px;}
+  .feature-card h3{font-family:var(--font-display); font-size:1.2rem; margin-bottom:8px;}
+  .feature-card p{color:var(--ink-soft); font-size:0.94rem; line-height:1.55;}
+
+  /* ---------- SHARED CONTAINERS ---------- */
+  .container{max-width:1200px; margin:0 auto; padding:48px 24px;}
+  .section-head{margin-bottom:28px;}
+  .section-head .eyebrow{color:var(--turf-light);}
+  .section-head h2{font-family:var(--font-display); font-size:2.1rem; color:var(--ink); font-weight:700;}
+  .section-head p{color:var(--ink-soft); margin-top:6px;}
+
+  /* ---------- SCOREBOARD FORM ---------- */
+  .panel{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    border:1px solid var(--line); padding:28px; margin-bottom:28px;
+  }
+  .form-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:16px; align-items:end;}
+  @media (max-width:900px){.form-grid{grid-template-columns:repeat(2,1fr);}}
+  .field label{
+    display:block; font-family:var(--font-display); font-size:0.82rem; font-weight:600;
+    letter-spacing:0.4px; color:var(--ink-soft); margin-bottom:6px; text-transform:uppercase;
+  }
+  .field input{
+    width:100%; padding:11px 14px; border-radius:var(--radius-sm); border:1.5px solid var(--line);
+    background:var(--cream); color:var(--ink); font-family:var(--font-body); font-size:0.98rem;
+    transition:border-color .2s ease;
+  }
+  .field input:focus{outline:none; border-color:var(--turf-light);}
+  .form-actions{display:flex; gap:12px; flex-wrap:wrap; margin-top:20px;}
+  .btn-sm{
+    font-family:var(--font-display); font-weight:700; font-size:0.92rem; padding:10px 20px;
+    border-radius:999px; border:none; cursor:pointer; transition:all .15s ease;
+  }
+  .btn-add{background:var(--turf); color:#fff;}
+  .btn-add:hover{background:var(--turf-light);}
+  .btn-reset{background:transparent; color:#C0392B; border:1.5px solid #C0392B;}
+  .btn-reset:hover{background:#C0392B; color:#fff;}
+  .btn-cancel{background:transparent; color:var(--ink-soft); border:1.5px solid var(--line);}
+  .btn-cancel:hover{background:var(--line);}
+  .btn-find{background:var(--amber); color:var(--pitch-dark);}
+  .btn-find:hover{background:var(--amber-dark);}
+
+  .toolbar{
+    display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .search-box{
+    flex:1; min-width:220px; position:relative;
+  }
+  .search-box input{
+    width:100%; padding:10px 14px 10px 38px; border-radius:999px; border:1.5px solid var(--line);
+    background:var(--card); color:var(--ink); font-size:0.95rem;
+  }
+  .search-box::before{
+    content:"🔍"; position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:0.9rem;
+  }
+  .sort-group{display:flex; gap:8px; flex-wrap:wrap;}
+  .chip-btn{
+    background:var(--card); border:1.5px solid var(--line); color:var(--ink);
+    font-family:var(--font-display); font-weight:600; font-size:0.85rem; padding:8px 16px;
+    border-radius:999px; cursor:pointer; transition:all .15s ease;
+  }
+  .chip-btn:hover{border-color:var(--turf-light); color:var(--turf-light);}
+
+  /* POTM badge */
+  .potm-banner{
+    display:none; align-items:center; gap:18px; background:linear-gradient(90deg, var(--pitch-dark), var(--turf));
+    color:#fff; border-radius:var(--radius); padding:20px 26px; margin-bottom:24px; box-shadow:var(--shadow);
+  }
+  .potm-banner.show{display:flex;}
+  .potm-trophy{font-size:2.4rem;}
+  .potm-banner h4{font-family:var(--font-display); color:var(--amber); font-size:0.8rem; letter-spacing:2px; text-transform:uppercase;}
+  .potm-banner .name{font-family:var(--font-display); font-size:1.5rem; font-weight:700;}
+  .potm-banner .runs{font-family:var(--font-mono); color:var(--amber); font-size:1.3rem; margin-left:auto;}
+
+  /* Table */
+  .table-wrap{overflow-x:auto; border-radius:var(--radius); border:1px solid var(--line); background:var(--card);}
+  table{width:100%; border-collapse:collapse; min-width:680px;}
+  thead th{
+    background:var(--pitch-dark); color:#fff; font-family:var(--font-display); font-weight:600;
+    letter-spacing:0.4px; text-transform:uppercase; font-size:0.78rem; padding:14px 16px; text-align:left;
+  }
+  tbody td{padding:14px 16px; border-bottom:1px solid var(--line); font-size:0.95rem;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr{transition:background .15s ease;}
+  tbody tr:hover{background:rgba(45,106,79,0.06);}
+  tbody tr.top-scorer{background:rgba(255,177,0,0.10); box-shadow:inset 4px 0 0 var(--amber);}
+  .runs-cell{font-family:var(--font-mono); font-weight:700; color:var(--turf-light);}
+  .status-pill{
+    font-family:var(--font-display); font-weight:600; font-size:0.78rem; padding:5px 12px;
+    border-radius:999px; cursor:pointer; border:none; letter-spacing:0.3px;
+  }
+  .status-not-out{background:#DCF3E4; color:#1B7A43;}
+  .status-out{background:#FBE1DE; color:#B23A2E;}
+  body.dark .status-not-out{background:#173A26; color:#7FE0A2;}
+  body.dark .status-out{background:#402019; color:#F2A79A;}
+  .row-actions{display:flex; gap:8px;}
+  .icon-action{
+    border:none; background:var(--cream); width:32px; height:32px; border-radius:8px; cursor:pointer;
+    font-size:0.9rem; transition:background .15s ease;
+  }
+  .icon-action:hover{background:var(--line);}
+  .empty-row td{text-align:center; padding:40px 16px; color:var(--ink-soft); font-style:italic;}
+
+  /* Stats cards */
+  .stats-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:36px;}
+  @media (max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:520px){.stats-grid{grid-template-columns:1fr;}}
+  .stat-card{
+    background:var(--card); border-radius:var(--radius); border:1px solid var(--line); box-shadow:var(--shadow);
+    padding:22px; position:relative; overflow:hidden;
+  }
+  .stat-card::after{
+    content:""; position:absolute; right:-20px; top:-20px; width:70px; height:70px; border-radius:50%;
+    background:rgba(255,177,0,0.12);
+  }
+  .stat-card .label{font-family:var(--font-display); font-size:0.78rem; letter-spacing:1px; color:var(--ink-soft); text-transform:uppercase;}
+  .stat-card .value{font-family:var(--font-mono); font-size:2rem; font-weight:800; color:var(--pitch-dark); margin-top:6px;}
+  body.dark .stat-card .value{color:var(--amber);}
+
+  .charts-grid{display:grid; grid-template-columns:1.3fr 1fr; gap:24px;}
+  @media (max-width:900px){.charts-grid{grid-template-columns:1fr;}}
+  .chart-card{background:var(--card); border-radius:var(--radius); border:1px solid var(--line); box-shadow:var(--shadow); padding:24px;}
+  .chart-card h3{font-family:var(--font-display); margin-bottom:16px; font-size:1.05rem;}
+  .chart-card canvas{max-height:320px;}
+
+  /* About page */
+  .about-grid{display:grid; grid-template-columns:1fr 1fr; gap:32px; align-items:start;}
+  @media (max-width:900px){.about-grid{grid-template-columns:1fr;}}
+  .about-grid h3{font-family:var(--font-display); font-size:1.2rem; margin:20px 0 10px;}
+  .about-grid p, .about-grid li{color:var(--ink-soft); line-height:1.7; font-size:0.97rem;}
+  .about-grid ul{padding-left:20px; margin-bottom:10px;}
+  .tag-list{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+  .tag{background:var(--turf); color:#fff; font-family:var(--font-display); font-size:0.8rem; font-weight:600; padding:6px 14px; border-radius:999px;}
+
+  footer{
+    background:var(--pitch-dark); color:#CFE3D6; text-align:center; padding:26px; font-size:0.88rem;
+    border-top:3px solid var(--amber);
+  }
+  footer span{color:var(--amber);}
+
+  .toast{
+    position:fixed; bottom:24px; right:24px; background:var(--pitch-dark); color:#fff;
+    padding:14px 22px; border-radius:12px; font-family:var(--font-display); font-weight:600;
+    box-shadow:var(--shadow); z-index:999; transform:translateY(120%); opacity:0; transition:all .35s ease;
+    border-left:4px solid var(--amber);
+  }
+  .toast.show{transform:translateY(0); opacity:1;}
+</style>
+</head>
+<body>
+
+<header class="navbar">
+  <div class="nav-inner">
+    <button class="brand" onclick="showPage('home')">
+      <span class="brand-mark">🏏</span>
+      <span class="brand-text">Power<span>Play</span></span>
+    </button>
+    <nav class="nav-links" id="navLinks">
+      <button class="nav-link active" data-page="home" onclick="showPage('home')">Home</button>
+      <button class="nav-link" data-page="scoreboard" onclick="showPage('scoreboard')">Scoreboard</button>
+      <button class="nav-link" data-page="stats" onclick="showPage('stats')">Team Statistics</button>
+      <button class="nav-link" data-page="about" onclick="showPage('about')">About</button>
+    </nav>
+    <div class="nav-right">
+      <button class="icon-btn" id="darkToggle" title="Toggle dark mode">🌙</button>
+      <button class="hamburger" id="hamburger">☰</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ HOME ============ -->
+  <section class="page active" id="page-home">
+    <div class="hero">
+      <div class="beam b1"></div><div class="beam b2"></div><div class="beam b3"></div>
+      <div class="hero-inner">
+        <div>
+          <span class="eyebrow">Cricket Scoreboard Management System</span>
+          <h1>Every run, <em>counted.</em><br>Every player, <em>ranked.</em></h1>
+          <p>Log every innings live, crown your Player of the Match, and watch team statistics update the moment the ball is bowled — built on a simple linear array, scoreboard-style.</p>
+          <div class="hero-ctas">
+            <button class="btn btn-primary" onclick="showPage('scoreboard')">▶ Start Scoring</button>
+            <button class="btn btn-outline" onclick="showPage('stats')">View Team Stats</button>
+          </div>
+        </div>
+        <div class="led-panel">
+          <div class="led-row">
+            <span class="led-title">Live Team Total</span>
+            <span class="led-dot"></span>
+          </div>
+          <div class="led-score" id="heroScore">000</div>
+          <div class="led-sub" id="heroSub">0 PLAYERS · 0 RUNS</div>
+          <div class="led-grid">
+            <div class="led-chip"><b id="heroHigh">-</b><span>Highest</span></div>
+            <div class="led-chip"><b id="heroAvg">-</b><span>Average</span></div>
+            <div class="led-chip"><b id="heroLow">-</b><span>Lowest</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="intro">
+      <div class="feature-card">
+        <div class="ic">📋</div>
+        <h3>Linear List Scoring</h3>
+        <p>Every player is stored as a record in a single array — add, edit, delete, and reorder in real time, exactly like a live match scoresheet.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ic">🏆</div>
+        <h3>Player of the Match</h3>
+        <p>One tap scans the array to find the highest scorer and highlights their row with a Player of the Match badge.</p>
+      </div>
+      <div class="feature-card">
+        <div class="ic">📊</div>
+        <h3>Instant Team Statistics</h3>
+        <p>Totals, averages, highest and lowest scores, boundaries and strike rate — all recalculated automatically as scores change.</p>
+      </div>
+    </section>
+  </section>
+
+  <!-- ============ SCOREBOARD ============ -->
+  <section class="page" id="page-scoreboard">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Match Console</span>
+        <h2>Scoreboard</h2>
+        <p>Add players as they bat, keep the innings updated, and find your Player of the Match.</p>
+      </div>
+
+      <div class="panel">
+        <div class="form-grid">
+          <div class="field">
+            <label for="inpName">Player Name</label>
+            <input type="text" id="inpName" placeholder="e.g. Rohit Sharma">
+          </div>
+          <div class="field">
+            <label for="inpRuns">Runs Scored</label>
+            <input type="number" id="inpRuns" placeholder="0" min="0">
+          </div>
+          <div class="field">
+            <label for="inpBalls">Balls Faced <small>(optional)</small></label>
+            <input type="number" id="inpBalls" placeholder="0" min="0">
+          </div>
+          <div class="field">
+            <label for="inpBoundaries">Boundaries (4s+6s) <small>(optional)</small></label>
+            <input type="number" id="inpBoundaries" placeholder="0" min="0">
+          </div>
+          <div class="field">
+            <button class="btn-sm btn-add" id="addBtn" style="width:100%;" onclick="handleAddOrUpdate()">+ Add Player</button>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm btn-cancel" id="cancelEditBtn" style="display:none;" onclick="cancelEdit()">Cancel Edit</button>
+          <button class="btn-sm btn-find" onclick="findHighestScorer()">🏆 Find Highest Scorer</button>
+          <button class="btn-sm btn-reset" onclick="resetScores()">↺ Reset Scores</button>
+        </div>
+      </div>
+
+      <div class="potm-banner" id="potmBanner">
+        <div class="potm-trophy">🏆</div>
+        <div>
+          <h4>Player of the Match</h4>
+          <div class="name" id="potmName">-</div>
+        </div>
+        <div class="runs" id="potmRuns">0 runs</div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search player by name..." oninput="renderTable()">
+        </div>
+        <div class="sort-group">
+          <button class="chip-btn" onclick="sortPlayers('name')">Sort by Name</button>
+          <button class="chip-btn" onclick="sortPlayers('runsDesc')">Highest Runs</button>
+          <button class="chip-btn" onclick="sortPlayers('runsAsc')">Lowest Runs</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Player Name</th><th>Runs</th><th>Balls</th><th>Boundaries</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section class="page" id="page-stats">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Analytics</span>
+        <h2>Team Statistics</h2>
+        <p>Automatically calculated from the current scoreboard array.</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">Total Players</div><div class="value" id="statPlayers">0</div></div>
+        <div class="stat-card"><div class="label">Total Team Runs</div><div class="value" id="statTotal">0</div></div>
+        <div class="stat-card"><div class="label">Highest Score</div><div class="value" id="statHigh">-</div></div>
+        <div class="stat-card"><div class="label">Lowest Score</div><div class="value" id="statLow">-</div></div>
+        <div class="stat-card"><div class="label">Average Score</div><div class="value" id="statAvg">-</div></div>
+        <div class="stat-card"><div class="label">Total Boundaries</div><div class="value" id="statBoundaries">0</div></div>
+        <div class="stat-card"><div class="label">Team Strike Rate</div><div class="value" id="statSR">-</div></div>
+        <div class="stat-card"><div class="label">Player of the Match</div><div class="value" id="statPOTM" style="font-family:var(--font-display); font-size:1.3rem;">-</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Runs per Player</h3>
+          <canvas id="barChart"></canvas>
+          <p id="barEmpty" style="color:var(--ink-soft); font-size:0.9rem; display:none;">Add players on the Scoreboard page to see this chart.</p>
+        </div>
+        <div class="chart-card">
+          <h3>Run Contribution %</h3>
+          <canvas id="pieChart"></canvas>
+          <p id="pieEmpty" style="color:var(--ink-soft); font-size:0.9rem; display:none;">Add players on the Scoreboard page to see this chart.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT ============ -->
+  <section class="page" id="page-about">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Mini Project</span>
+        <h2>About PowerPlay</h2>
+        <p>Cricket Scoreboard Management System — a college mini project.</p>
+      </div>
+      <div class="about-grid">
+        <div>
+          <h3>Objective</h3>
+          <p>PowerPlay is a web application that lets a scorer record every player's runs during a match, identify the highest scorer, and generate team statistics automatically — all without a backend or database.</p>
+          <h3>Core Concept: Linear List (Array)</h3>
+          <p>Every player is stored as an object inside a single JavaScript array — the classic Linear List data structure. Adding a player pushes a record to the array, editing updates a record in place, deleting splices it out, and finding the highest scorer performs a linear scan across the array to locate the maximum value. Sorting rearranges the array itself, and the table, charts, and statistics all re-render directly from it.</p>
+          <h3>Core Features</h3>
+          <ul>
+            <li>Add, edit, delete and reset player records</li>
+            <li>Automatic Player of the Match detection with row highlighting</li>
+            <li>Live team statistics: total runs, average, highest/lowest score, boundaries, strike rate</li>
+            <li>Search by name and sort by name or runs</li>
+            <li>Bar chart and pie chart visualisation using Chart.js</li>
+            <li>Dark mode and fully responsive, stadium-inspired design</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Built With</h3>
+          <div class="tag-list">
+            <span class="tag">HTML5</span>
+            <span class="tag">CSS3</span>
+            <span class="tag">JavaScript (ES6)</span>
+            <span class="tag">Chart.js</span>
+            <span class="tag">Arrays / Linear List</span>
+          </div>
+          <h3>How Scoring Works</h3>
+          <p>1. Enter a player's name and runs (balls faced and boundaries are optional).<br>
+          2. Click <strong>Add Player</strong> — the record is pushed into the players array.<br>
+          3. Use <strong>Find Highest Scorer</strong> to scan the array and crown the Player of the Match.<br>
+          4. Visit <strong>Team Statistics</strong> to see totals, averages and charts recomputed live.</p>
+          <h3>Note</h3>
+          <p>Scores are held in memory for the current session (matching the array-based mini-project brief), so refreshing the page starts a new innings.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Built for a college mini project · <span>PowerPlay</span> Cricket Scoreboard Management System
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ======================= DATA (Linear List / Array) ======================= */
+let players = [];   // { id, name, runs, balls, boundaries, status }
+let nextId = 1;
+let editingId = null;
+let barChart = null;
+let pieChart = null;
+
+/* ======================= NAVIGATION ======================= */
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  document.getElementById('navLinks').classList.remove('open');
+  window.scrollTo({top:0, behavior:'smooth'});
+  if(page === 'stats'){ renderCharts(); }
+}
+document.getElementById('hamburger').addEventListener('click', () => {
+  document.getElementById('navLinks').classList.toggle('open');
+});
+
+/* ======================= DARK MODE ======================= */
+const darkToggle = document.getElementById('darkToggle');
+darkToggle.addEventListener('click', () => {
+  document.body.classList.toggle('dark');
+  darkToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+  renderCharts();
+});
+
+/* ======================= TOAST ======================= */
+let toastTimer = null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ======================= CRUD ======================= */
+function handleAddOrUpdate(){
+  const nameInp = document.getElementById('inpName');
+  const runsInp = document.getElementById('inpRuns');
+  const ballsInp = document.getElementById('inpBalls');
+  const boundInp = document.getElementById('inpBoundaries');
+
+  const name = nameInp.value.trim();
+  const runs = parseInt(runsInp.value, 10);
+
+  if(!name){ showToast('Please enter a player name'); nameInp.focus(); return; }
+  if(isNaN(runs) || runs < 0){ showToast('Please enter valid runs'); runsInp.focus(); return; }
+
+  const balls = parseInt(ballsInp.value, 10) || 0;
+  const boundaries = parseInt(boundInp.value, 10) || 0;
+
+  if(editingId !== null){
+    const p = players.find(pl => pl.id === editingId);
+    if(p){ p.name = name; p.runs = runs; p.balls = balls; p.boundaries = boundaries; }
+    showToast('Player updated');
+    cancelEdit();
+  } else {
+    players.push({ id: nextId++, name, runs, balls, boundaries, status: 'Not Out' });
+    showToast('Player added');
+  }
+
+  nameInp.value = ''; runsInp.value = ''; ballsInp.value = ''; boundInp.value = '';
+  nameInp.focus();
+  renderAll();
+}
+
+function editPlayer(id){
+  const p = players.find(pl => pl.id === id);
+  if(!p) return;
+  editingId = id;
+  document.getElementById('inpName').value = p.name;
+  document.getElementById('inpRuns').value = p.runs;
+  document.getElementById('inpBalls').value = p.balls;
+  document.getElementById('inpBoundaries').value = p.boundaries;
+  document.getElementById('addBtn').textContent = '✓ Update Player';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+  document.getElementById('inpName').focus();
+}
+
+function cancelEdit(){
+  editingId = null;
+  document.getElementById('addBtn').textContent = '+ Add Player';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  document.getElementById('inpName').value = '';
+  document.getElementById('inpRuns').value = '';
+  document.getElementById('inpBalls').value = '';
+  document.getElementById('inpBoundaries').value = '';
+}
+
+function deletePlayer(id){
+  players = players.filter(p => p.id !== id);
+  if(editingId === id) cancelEdit();
+  showToast('Player removed');
+  renderAll();
+}
+
+function toggleStatus(id){
+  const p = players.find(pl => pl.id === id);
+  if(!p) return;
+  p.status = p.status === 'Not Out' ? 'Out' : 'Not Out';
+  renderTable();
+}
+
+function resetScores(){
+  if(players.length === 0){ showToast('Scoreboard is already empty'); return; }
+  if(!confirm('Reset all scores? This will clear the entire scoreboard.')) return;
+  players = [];
+  editingId = null;
+  cancelEdit();
+  document.getElementById('potmBanner').classList.remove('show');
+  showToast('Scoreboard reset');
+  renderAll();
+}
+
+/* ======================= HIGHEST SCORER (linear scan) ======================= */
+function findHighestScorer(){
+  if(players.length === 0){ showToast('Add players first'); return; }
+  let top = players[0];
+  for(let i = 1; i < players.length; i++){
+    if(players[i].runs > top.runs) top = players[i];
+  }
+  document.getElementById('potmName').textContent = top.name;
+  document.getElementById('potmRuns').textContent = top.runs + ' runs';
+  document.getElementById('potmBanner').classList.add('show');
+  renderTable(top.id);
+  showToast('🏆 ' + top.name + ' is Player of the Match!');
+}
+
+/* ======================= SEARCH & SORT ======================= */
+function sortPlayers(mode){
+  if(mode === 'name') players.sort((a,b) => a.name.localeCompare(b.name));
+  if(mode === 'runsDesc') players.sort((a,b) => b.runs - a.runs);
+  if(mode === 'runsAsc') players.sort((a,b) => a.runs - b.runs);
+  renderTable();
+}
+
+/* ======================= RENDER TABLE ======================= */
+function renderTable(highlightId){
+  const tbody = document.getElementById('tableBody');
+  const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  const list = players.filter(p => p.name.toLowerCase().includes(query));
+
+  tbody.innerHTML = '';
+
+  if(players.length === 0){
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No players yet — add your first player above to start the innings.</td></tr>';
+    return;
+  }
+  if(list.length === 0){
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No players match your search.</td></tr>';
+    return;
+  }
+
+  let topId = highlightId;
+  if(topId === undefined){
+    let top = players[0];
+    for(const p of players) if(p.runs > top.runs) top = p;
+    topId = top.runs > 0 ? top.id : null;
+  }
+
+  list.forEach((p, idx) => {
+    const tr = document.createElement('tr');
+    if(p.id === topId) tr.classList.add('top-scorer');
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td>${escapeHtml(p.name)} ${p.id === topId ? '🏆' : ''}</td>
+      <td class="runs-cell">${p.runs}</td>
+      <td>${p.balls || '-'}</td>
+      <td>${p.boundaries || '-'}</td>
+      <td><button class="status-pill ${p.status === 'Not Out' ? 'status-not-out' : 'status-out'}" onclick="toggleStatus(${p.id})">${p.status}</button></td>
+      <td class="row-actions">
+        <button class="icon-action" title="Edit" onclick="editPlayer(${p.id})">✏️</button>
+        <button class="icon-action" title="Delete" onclick="deletePlayer(${p.id})">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ======================= STATISTICS ======================= */
+function computeStats(){
+  const n = players.length;
+  const totalRuns = players.reduce((s,p) => s + p.runs, 0);
+  const totalBalls = players.reduce((s,p) => s + p.balls, 0);
+  const totalBoundaries = players.reduce((s,p) => s + p.boundaries, 0);
+  const highest = n ? Math.max(...players.map(p => p.runs)) : null;
+  const lowest = n ? Math.min(...players.map(p => p.runs)) : null;
+  const avg = n ? (totalRuns / n) : null;
+  const sr = totalBalls > 0 ? (totalRuns / totalBalls * 100) : null;
+  return { n, totalRuns, totalBalls, totalBoundaries, highest, lowest, avg, sr };
+}
+
+function renderStats(){
+  const s = computeStats();
+  document.getElementById('statPlayers').textContent = s.n;
+  document.getElementById('statTotal').textContent = s.totalRuns;
+  document.getElementById('statHigh').textContent = s.highest !== null ? s.highest : '-';
+  document.getElementById('statLow').textContent = s.lowest !== null ? s.lowest : '-';
+  document.getElementById('statAvg').textContent = s.avg !== null ? s.avg.toFixed(1) : '-';
+  document.getElementById('statBoundaries').textContent = s.totalBoundaries;
+  document.getElementById('statSR').textContent = s.sr !== null ? s.sr.toFixed(1) : '-';
+
+  let potmText = '-';
+  if(s.n){
+    let top = players[0];
+    for(const p of players) if(p.runs > top.runs) top = p;
+    potmText = top.name + ' (' + top.runs + ')';
+  }
+  document.getElementById('statPOTM').textContent = potmText;
+
+  // hero LED panel
+  document.getElementById('heroScore').textContent = String(s.totalRuns).padStart(3,'0');
+  document.getElementById('heroSub').textContent = s.n + ' PLAYERS · ' + s.totalRuns + ' RUNS';
+  document.getElementById('heroHigh').textContent = s.highest !== null ? s.highest : '-';
+  document.getElementById('heroAvg').textContent = s.avg !== null ? s.avg.toFixed(1) : '-';
+  document.getElementById('heroLow').textContent = s.lowest !== null ? s.lowest : '-';
+}
+
+/* ======================= CHARTS ======================= */
+function getChartColors(){
+  const isDark = document.body.classList.contains('dark');
+  return {
+    grid: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,46,31,0.08)',
+    text: isDark ? '#9FBCAC' : '#516B5C',
+    bar: '#2D6A4F',
+    barHi: '#FFB100',
+    palette: ['#2D6A4F','#40916C','#FFB100','#173B27','#E09400','#7FBF9A','#0F2E1F','#B7D9C4']
+  };
+}
+
+function renderCharts(){
+  const barCanvas = document.getElementById('barChart');
+  const pieCanvas = document.getElementById('pieChart');
+  const barEmpty = document.getElementById('barEmpty');
+  const pieEmpty = document.getElementById('pieEmpty');
+  const colors = getChartColors();
+
+  if(barChart){ barChart.destroy(); barChart = null; }
+  if(pieChart){ pieChart.destroy(); pieChart = null; }
+
+  if(players.length === 0){
+    barCanvas.style.display = 'none'; pieCanvas.style.display = 'none';
+    barEmpty.style.display = 'block'; pieEmpty.style.display = 'block';
+    return;
+  }
+  barCanvas.style.display = 'block'; pieCanvas.style.display = 'block';
+  barEmpty.style.display = 'none'; pieEmpty.style.display = 'none';
+
+  const highest = Math.max(...players.map(p => p.runs));
+  const names = players.map(p => p.name);
+  const runs = players.map(p => p.runs);
+
+  barChart = new Chart(barCanvas, {
+    type: 'bar',
+    data: {
+      labels: names,
+      datasets: [{
+        label: 'Runs',
+        data: runs,
+        backgroundColor: runs.map(r => r === highest ? colors.barHi : colors.bar),
+        borderRadius: 8,
+        maxBarThickness: 46
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: colors.grid }, ticks: { color: colors.text } },
+        x: { grid: { display: false }, ticks: { color: colors.text } }
+      }
+    }
+  });
+
+  const totalRuns = runs.reduce((a,b) => a+b, 0);
+  pieChart = new Chart(pieCanvas, {
+    type: 'pie',
+    data: {
+      labels: names,
+      datasets: [{
+        data: runs,
+        backgroundColor: names.map((_, i) => colors.palette[i % colors.palette.length]),
+        borderColor: document.body.classList.contains('dark') ? '#12291D' : '#fff',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: colors.text, boxWidth: 12, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const pct = totalRuns ? (ctx.parsed / totalRuns * 100).toFixed(1) : 0;
+              return ctx.label + ': ' + ctx.parsed + ' runs (' + pct + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ======================= MASTER RENDER ======================= */
+function renderAll(){
+  renderTable();
+  renderStats();
+  renderCharts();
+}
+
+renderAll();
+</script>
+</body>
+</html>
